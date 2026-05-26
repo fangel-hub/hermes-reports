@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 项目回款仪表盘</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#333;padding:20px}
+.header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:24px 32px;border-radius:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:24px;font-weight:600}
+.header .date{font-size:14px;opacity:.85}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.stat-card .label{font-size:13px;color:#888;margin-bottom:4px}
+.stat-card .value{font-size:28px;font-weight:700;color:#333}
+.stat-card .value.red{color:#e74c3c}
+.stat-card .value.green{color:#27ae60}
+.stat-card .value.orange{color:#f39c12}
+.section-title{font-size:18px;font-weight:600;margin:24px 0 12px;padding-left:12px;border-left:4px solid #667eea}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);margin-bottom:24px}
+th{background:#667eea;color:#fff;padding:12px 16px;text-align:left;font-weight:500;font-size:13px}
+td{padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:13px}
+tr:hover{background:#f8f9ff}
+.status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.status.已完成{background:#d4edda;color:#155724}
+.status.在途{background:#ffeeba;color:#856404}
+.status.逾期{background:#f8d7da;color:#721c24}
+.status.未开始{background:#e2e3e5;color:#383d41}
+.urgent{background:#fff3cd;border-left:4px solid #f39c12}
+.danger{background:#f8d7da;border-left:4px solid #e74c3c}
+.footer{text-align:center;color:#999;font-size:12px;padding:20px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📊 项目回款仪表盘</h1>
+    <div class="date">区域经营四部 · 绍兴 · 台州</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:13px;opacity:.85">更新时间</div>
+    <div style="font-size:16px;font-weight:600" id="updateDate"></div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="label">项目总数</div>
+    <div class="value" id="totalProjects">-</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">合同总额</div>
+    <div class="value" id="totalAmount">-</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">已回款金额</div>
+    <div class="value green" id="paidAmount">-</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">剩余待回款</div>
+    <div class="value orange" id="remainingAmount">-</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">回款完成率</div>
+    <div class="value" id="completionRate">-</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">逾期项目数</div>
+    <div class="value red" id="overdueCount">-</div>
+  </div>
+</div>
+
+<div class="section-title">⚠️ 高危项目（逾期+大额待回款）</div>
+<table>
+  <thead><tr>
+    <th>项目名称</th><th>客户</th><th>合同额</th><th>已回款</th><th>待回款</th><th>状态</th><th>项目经理</th><th>销售</th>
+  </tr></thead>
+  <tbody id="highRiskBody">
+    <tr><td colspan="8" style="text-align:center;color:#999">数据加载中...</td></tr>
+  </tbody>
+</table>
+
+<div class="section-title">📋 全部回款项目</div>
+<table>
+  <thead><tr>
+    <th>项目名称</th><th>客户</th><th>合同额</th><th>已回款</th><th>待回款</th><th>完成率</th><th>状态</th><th>责任人</th>
+  </tr></thead>
+  <tbody id="allProjectsBody">
+    <tr><td colspan="8" style="text-align:center;color:#999">数据加载中...</td></tr>
+  </tbody>
+</table>
+
+<div class="footer">
+  数据来源：和仁科技回款计划表 · 每周更新
+</div>
+
+<script>
+function fmt(n){if(n===null||n===undefined)return'-';const v=Number(n);if(isNaN(v))return String(n);return'¥'+(v/10000).toFixed(1)+'万'}
+function fmtRate(n,r){if(n===null||n===undefined||r===null||r===undefined||r===0)return'-';return((n/r)*100).toFixed(1)+'%'}
+
+// === 数据在这里手动更新 ===
+// 从回款Excel复制关键数据过来，格式：{name,code,amount,paid,customer,pm,sales,status,problem}
+const data = [];
+
+// 示例数据（后续从乐享Smartsheet自动拉取）
+const sampleData = [
+  {name:'舟山市普陀区人民医院智慧医院信息化项目',amount:36985000,paid:9244250,customer:'普陀区人民医院',pm:'喻元帆',sales:'-',status:'在途',problem:'部分款项在流程中'},
+  {name:'南总信息化改造项目',amount:49840680,paid:25000000,customer:'南总医院',pm:'-',sales:'-',status:'在途',problem:''},
+  {name:'江苏省中医院中医疾病基地移动电子病历系统项目',amount:150000,paid:150000,customer:'江苏省中医院',pm:'-',sales:'-',status:'已完成',problem:''},
+  {name:'江苏省中医院中药饮片供应管理平台项目',amount:110000,paid:99000,customer:'江苏省中医院',pm:'-',sales:'-',status:'在途',problem:''},
+  {name:'江苏省中医院回顾性临床研究数据查询系统项目',amount:200000,paid:60000,customer:'江苏省中医院',pm:'-',sales:'-',status:'逾期',problem:'应回未回款'},
+  {name:'江苏省中医院医疗研究电子病历系统2期',amount:130000,paid:130000,customer:'江苏省中医院',pm:'-',sales:'-',status:'已完成',problem:''},
+  {name:'江苏省中医院互联互通五乙改造',amount:4678000,paid:3742400,customer:'江苏省中医院',pm:'-',sales:'-',status:'在途',problem:''},
+  {name:'江苏省中医院中医康复治疗系统项目',amount:818000,paid:245400,customer:'江苏省中医院',pm:'-',sales:'-',status:'在途',problem:''},
+];
+
+function loadData(d){
+  const total=d.length;
+  const totalAmt=d.reduce((s,i)=>s+(Number(i.amount)||0),0);
+  const paidAmt=d.reduce((s,i)=>s+(Number(i.paid)||0),0);
+  const remain=totalAmt-paidAmt;
+  const overdue=d.filter(i=>i.status==='逾期');
+  const rate=totalAmt?((paidAmt/totalAmt)*100).toFixed(1):'0';
+
+  document.getElementById('totalProjects').textContent=total+'个';
+  document.getElementById('totalAmount').innerHTML='<small>¥</small>'+(totalAmt/10000).toFixed(0)+'<small>万</small>';
+  document.getElementById('paidAmount').innerHTML='<small>¥</small>'+(paidAmt/10000).toFixed(0)+'<small>万</small>';
+  document.getElementById('remainingAmount').innerHTML='<small>¥</small>'+(remain/10000).toFixed(0)+'<small>万</small>';
+  document.getElementById('completionRate').textContent=rate+'%';
+  document.getElementById('overdueCount').textContent=overdue.length+'个';
+
+  // 高危项目
+  const highRisk=d.filter(i=>i.status==='逾期'||(i.status==='在途'&&((Number(i.amount)-Number(i.paid))>500000)))
+    .sort((a,b)=>(Number(b.amount)-Number(b.paid))-(Number(a.amount)-Number(a.paid)));
+  const hb=document.getElementById('highRiskBody');
+  hb.innerHTML=highRisk.length?highRisk.map(i=>`
+    <tr class="${i.status==='逾期'?'danger':'urgent'}">
+      <td><strong>${i.name}</strong></td>
+      <td>${i.customer||'-'}</td>
+      <td>${fmt(i.amount)}</td>
+      <td>${fmt(i.paid)}</td>
+      <td><strong>${fmt(Number(i.amount)-Number(i.paid))}</strong></td>
+      <td><span class="status ${i.status==='逾期'?'逾期':i.status}">${i.status}</span></td>
+      <td>${i.pm||'-'}</td>
+      <td>${i.sales||'-'}</td>
+    </tr>`).join('')
+    :'<tr><td colspan="8" style="text-align:center;color:#27ae60">✅ 当前无高危项目</td></tr>';
+
+  // 全部项目
+  const ab=document.getElementById('allProjectsBody');
+  ab.innerHTML=d.map(i=>{
+    const rateStr=fmtRate(Number(i.paid),Number(i.amount));
+    const remainAmt=Number(i.amount)-Number(i.paid);
+    return `<tr>
+      <td>${i.name}</td>
+      <td>${i.customer||'-'}</td>
+      <td>${fmt(i.amount)}</td>
+      <td>${fmt(i.paid)}</td>
+      <td>${fmt(remainAmt)}</td>
+      <td>${rateStr}</td>
+      <td><span class="status ${i.status==='逾期'?'逾期':i.status}">${i.status}</span></td>
+      <td>${i.pm||'-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('updateDate').textContent=new Date().toLocaleDateString('zh-CN');
+loadData(sampleData);
+</script>
+</body>
+</html>

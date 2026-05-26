@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔄 三方对接进度看板</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#333;padding:20px}
+.header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:24px 32px;border-radius:16px;margin-bottom:24px}
+.header h1{font-size:24px;font-weight:600}
+.header .sub{font-size:14px;opacity:.85;margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);text-align:center}
+.stat-card .num{font-size:32px;font-weight:700}
+.stat-card .num.red{color:#e74c3c}
+.stat-card .num.green{color:#27ae60}
+.stat-card .num.orange{color:#f39c12}
+.stat-card .num.blue{color:#3498db}
+.stat-card .lbl{font-size:13px;color:#888;margin-top:4px}
+.section-title{font-size:18px;font-weight:600;margin:24px 0 12px;padding-left:12px;border-left:4px solid #667eea}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);margin-bottom:24px}
+th{background:#667eea;color:#fff;padding:10px 14px;text-align:left;font-weight:500;font-size:13px}
+td{padding:8px 14px;border-bottom:1px solid #f0f0f0;font-size:13px}
+tr:hover{background:#f8f9ff}
+.tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500}
+.tag.red{background:#f8d7da;color:#721c24}
+.tag.green{background:#d4edda;color:#155724}
+.tag.yellow{background:#fff3cd;color:#856404}
+.tag.gray{background:#e2e3e5;color:#383d41}
+.tag.blue{background:#d1ecf1;color:#0c5460}
+.progress-bar{width:100%;height:6px;background:#eee;border-radius:3px;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s}
+.risk-high{background:#f8d7da;border-left:4px solid #e74c3c}
+.risk-med{background:#fff3cd;border-left:4px solid #f39c12}
+.risk-low{background:#d4edda;border-left:4px solid #27ae60}
+.footer{text-align:center;color:#999;font-size:12px;padding:20px}
+@media(max-width:768px){.stats{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔄 第三方系统对接进度</h1>
+  <div class="sub">郑州市中心医院 · 国家创伤区域医疗中心信息化项目 · 目标：6月30日上线</div>
+</div>
+
+<div class="stats">
+  <div class="stat-card"><div class="num blue" id="totalCount">-</div><div class="lbl">对接系统总数</div></div>
+  <div class="stat-card"><div class="num green" id="doneCount">-</div><div class="lbl">已完成</div></div>
+  <div class="stat-card"><div class="num orange" id="progressCount">-</div><div class="lbl">调试中</div></div>
+  <div class="stat-card"><div class="num red" id="pendingCount">-</div><div class="lbl">未进场</div></div>
+  <div class="stat-card"><div class="num" id="interfaceTotal">-</div><div class="lbl">接口总数</div></div>
+  <div class="stat-card"><div class="num green" id="interfaceDone">-</div><div class="lbl">联调成功</div></div>
+</div>
+
+<div class="section-title">🚨 需重点关注</div>
+<table>
+  <thead><tr><th>系统名称</th><th>厂商</th><th>状态</th><th>接口</th><th>完成率</th><th>预计完成</th><th>关键问题</th></tr></thead>
+  <tbody id="urgentBody"><tr><td colspan="7" style="text-align:center;color:#999">加载中...</td></tr></tbody>
+</table>
+
+<div class="section-title">📋 全量对接清单</div>
+<table>
+  <thead><tr><th>#</th><th>系统名称</th><th>厂商</th><th>对接方式</th><th>状态</th><th>接口</th><th>完成率</th><th>紧急度</th><th>备注</th></tr></thead>
+  <tbody id="allBody"><tr><td colspan="9" style="text-align:center;color:#999">加载中...</td></tr></tbody>
+</table>
+
+<div class="footer">数据来源：三方对接清单20260522 · 每周二更新</div>
+
+<script>
+const fmtPct=(d,t)=>{if(!t||t===0)return'-';return Math.round((d/t)*100)+'%'};
+
+// 从Excel优化版复制数据
+const data=[
+  {id:33,name:'CA认证系统',vendor:'和仁科技',method:'HIS直连',status:'已进场办公',deadline:'',urgency:'✅ 已完成',total:18,done:18,note:'周三正式服务器到现场'},
+  {id:34,name:'电子病历移动签署系统（患者）',vendor:'和仁科技',method:'HIS直连',status:'已进场办公',deadline:'',urgency:'✅ 已完成',total:18,done:18,note:'周三正式服务器到现场'},
+  {id:17,name:'发药机',vendor:'海尔',method:'平台接口对接',status:'不在A包',deadline:'5.29',urgency:'🔴 本周到期',total:6,done:0,note:'HIS接口已开发完成，等待配合调试'},
+  {id:8,name:'叫号系统/分诊系统',vendor:'神州视翰',method:'平台接口对接',status:'不在A包',deadline:'5.29',urgency:'🔴 本周到期',total:9,done:0,note:'接口已开发完成，神州视翰正在申请授权'},
+  {id:15,name:'床头屏',vendor:'山东亚华',method:'平台接口对接',status:'不在A包',deadline:'',urgency:'🟡 联调冲刺',total:4,done:4,note:'接口已调试通'},
+  {id:1,name:'HIS系统',vendor:'和仁科技',method:'-',status:'已进场办公',deadline:'',urgency:'✅ 已完成',total:0,done:0,note:'主系统'},
+  {id:2,name:'电子病历系统',vendor:'和仁科技',method:'-',status:'已进场办公',deadline:'',urgency:'✅ 已完成',total:0,done:0,note:'主系统'},
+  {id:3,name:'检验信息系统(LIS)',vendor:'上海瑞美',method:'平台接口对接',status:'待推进',deadline:'6月中',urgency:'🟠 需推进',total:8,done:0,note:'尚未进场'},
+  {id:4,name:'影像系统(PACS)',vendor:'联影',method:'平台接口对接',status:'待推进',deadline:'6月中',urgency:'🟠 需推进',total:7,done:0,note:'全院检查基础设施，风险高'},
+  {id:5,name:'合理用药系统',vendor:'美康',method:'平台接口对接',status:'已进场办公',deadline:'',urgency:'✅ 已完成',total:36,done:36,note:'接口最多，但已全部完成'},
+  {id:6,name:'院感系统',vendor:'-',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🟠 需推进',total:3,done:0,note:'待确认厂商'},
+  {id:7,name:'不良事件上报系统',vendor:'-',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🔵 待确认',total:3,done:0,note:'待确认厂商'},
+  {id:9,name:'输血管理系统',vendor:'上海瑞美',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🟠 需推进',total:5,done:0,note:''},
+  {id:10,name:'手术麻醉系统',vendor:'深圳稳渡',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🟠 需推进',total:5,done:0,note:''},
+  {id:11,name:'重症监护系统(ICU)',vendor:'-',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🔵 待确认',total:4,done:0,note:''},
+  {id:12,name:'血液净化系统',vendor:'云净之',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🟠 需推进',total:3,done:0,note:''},
+  {id:13,name:'病理系统',vendor:'-',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🔵 待确认',total:5,done:0,note:''},
+  {id:14,name:'内镜系统',vendor:'-',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🔵 待确认',total:3,done:0,note:''},
+  {id:16,name:'体检系统',vendor:'-',method:'平台接口对接',status:'待推进',deadline:'',urgency:'🟠 需推进',total:5,done:0,note:''},
+  {id:18,name:'集成平台',vendor:'和仁科技',method:'-',status:'已进场办公',deadline:'',urgency:'✅ 已完成',total:0,done:0,note:'主平台'},
+  {id:19,name:'数据中心(CDR)',vendor:'和仁科技',method:'-',status:'已进场办公',deadline:'',urgency:'✅ 已完成',total:0,done:0,note:'主系统'},
+];
+
+function load(d){
+  const total=d.length;
+  const done=d.filter(i=>i.done===i.total&&i.total>0);
+  const progress=d.filter(i=>i.done>0&&i.done<i.total);
+  const pending=d.filter(i=>i.done===0&&i.total>0);
+  const ifTotal=d.reduce((s,i)=>s+(i.total||0),0);
+  const ifDone=d.reduce((s,i)=>s+(i.done||0),0);
+
+  document.getElementById('totalCount').textContent=total;
+  document.getElementById('doneCount').textContent=done.length;
+  document.getElementById('progressCount').textContent=progress.length;
+  document.getElementById('pendingCount').textContent=pending.length;
+  document.getElementById('interfaceTotal').textContent=ifTotal;
+  document.getElementById('interfaceDone').textContent=ifDone;
+
+  // 需重点关注：本周到期+未进场+接口为0但有业务影响
+  const urgent=d.filter(i=>
+    i.urgency.includes('🔴')||
+    i.urgency.includes('🟠')||
+    (i.status==='待推进'&&i.total>0)
+  );
+  const ub=document.getElementById('urgentBody');
+  ub.innerHTML=urgent.map(i=>{
+    const pct=fmtPct(i.done,i.total);
+    const barColor=i.done===0?'#e74c3c':(i.done===i.total?'#27ae60':'#f39c12');
+    return `<tr class="${i.urgency.includes('🔴')?'risk-high':'risk-med'}">
+      <td><strong>${i.name}</strong></td>
+      <td>${i.vendor}</td>
+      <td><span class="tag ${i.status==='已进场办公'?'green':'gray'}">${i.status}</span></td>
+      <td>${i.done}/${i.total}</td>
+      <td>${pct}<div class="progress-bar"><div class="progress-fill" style="width:${pct};background:${barColor}"></div></div></td>
+      <td>${i.deadline||'-'}</td>
+      <td>${i.note||'-'}</td>
+    </tr>`;
+  }).join('');
+
+  // 全部
+  const ab=document.getElementById('allBody');
+  ab.innerHTML=d.map(i=>{
+    const pct=fmtPct(i.done,i.total);
+    const barColor=i.done===0?'#e74c3c':(i.done===i.total?'#27ae60':'#f39c12');
+    const tagClass=i.urgency.includes('✅')?'green':i.urgency.includes('🔴')?'red':i.urgency.includes('🟡')?'yellow':i.urgency.includes('🟠')?'yellow':'gray';
+    return `<tr>
+      <td>${i.id}</td>
+      <td>${i.name}</td>
+      <td>${i.vendor}</td>
+      <td>${i.method}</td>
+      <td><span class="tag ${i.status==='已进场办公'?'green':'gray'}">${i.status}</span></td>
+      <td>${i.done}/${i.total}</td>
+      <td>${pct}<div class="progress-bar"><div class="progress-fill" style="width:${pct};background:${barColor}"></div></div></td>
+      <td><span class="tag ${tagClass}">${i.urgency.replace(/[🔴🟡🟠🔵✅]/g,'')||'-'}</span></td>
+      <td>${i.note||'-'}</td>
+    </tr>`;
+  }).join('');
+}
+load(data);
+</script>
+</body>
+</html>
